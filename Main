@@ -1,0 +1,153 @@
+package com.example.simpletodoapp
+
+import android.os.Bundle
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import com.example.simpletodoapp.ui.theme.SimpleToDoAppTheme
+
+
+class MainActivity : ComponentActivity(){
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            SimpleToDoAppTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    TodoApp()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TodoApp() {
+    var textState by rememberSaveable { mutableStateOf("") }
+    var todoList by rememberSaveable { mutableStateOf(listOf<TodoItem>()) }
+
+    val context = LocalContext.current
+
+    val activeItems = todoList.filter { !it.isDone }
+    val completedItems = todoList.filter { it.isDone }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text("TODO List")
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextField(
+                value = textState,
+                onValueChange = { textState = it },
+                label = { Text("Enter a goal") }
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = {
+                val trimmed = textState.trim()
+                if (trimmed.isEmpty()) {
+                    Toast.makeText(context, "Goal cannot be empty", Toast.LENGTH_SHORT).show()
+                } else {
+                    val newItem = TodoItem(id = todoList.size + 1, title = trimmed)
+                    todoList = todoList + newItem
+                    textState = ""
+                }
+            }) {
+                Text("Add")
+            }
+        }
+
+
+        if (todoList.isEmpty()) {
+            // Empty state
+            Text("No items yet", color = Color.Gray)
+        } else {
+            TodoSection(
+                title = "Active",
+                items = activeItems,
+                onToggle = { item -> todoList = toggleItem(todoList, item) },
+                onDelete = { item -> todoList = todoList - item }
+            )
+
+            TodoSection(
+                title = "Completed",
+                items = completedItems,
+                onToggle = { item -> todoList = toggleItem(todoList, item) },
+                onDelete = { item -> todoList = todoList - item }
+            )
+        }
+    }
+}
+
+
+@Composable
+fun TodoSection(
+    title: String,
+    items: List<TodoItem>,
+    onToggle: (TodoItem) -> Unit,
+    onDelete: (TodoItem) -> Unit
+) {
+    if (items.isNotEmpty()) {
+        Text(
+            text = title
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Column {
+            items.forEach { item ->
+                TodoRow(item = item, onToggle = onToggle, onDelete = onDelete)
+            }
+        }
+    }
+}
+
+
+@Composable
+fun TodoRow(
+    item: TodoItem,
+    onToggle: (TodoItem) -> Unit,
+    onDelete: (TodoItem) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(
+                checked = item.isDone,
+                onCheckedChange = { onToggle(item) }
+            )
+            Text(item.title)
+        }
+
+        IconButton(onClick = { onDelete(item) }) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "Delete",
+                tint = Color.Gray
+            )
+        }
+    }
+}
+
+
+private fun toggleItem(list: List<TodoItem>, item: TodoItem): List<TodoItem> {
+    return list.map {
+        if (it.id == item.id) it.copy(isDone = !it.isDone) else it
+    }
+}
